@@ -38,20 +38,20 @@
 #define START_WRITE() do{}while(0)
 #define END_WRITE() do{}while(0)
 #elif defined P1_SEMAPHORE //using nachos semaphore. Your solution for Task 1
-#define START_READ() do{}while(0) //TODO  
-#define END_READ() do{}while(0) //TODO
-#define START_WRITE() do{}while(0) //TODO
-#define END_WRITE() do{}while(0) //TODO
+#define START_READ() sem[hash]->P()
+#define END_READ() sem[hash]->V()
+#define START_WRITE() sem[hash]->P()
+#define END_WRITE() sem[hash]->V()
 #elif defined P1_LOCK //using our implemented nachos lock. Your solution for Task 2
-#define START_READ() do{}while(0) //TODO
-#define END_READ() do{}while(0) //TODO
-#define START_WRITE() do{}while(0) //TODO
-#define END_WRITE() do{}while(0) //TODO
+#define START_READ() lck[hash]->Acquire()
+#define END_READ() lck[hash]->Release()
+#define START_WRITE() lck[hash]->Acquire()
+#define END_WRITE() lck[hash]->Release()
 #elif defined P1_RWLOCK //using our rwlock. Your solution for Task 3
-#define START_READ() do{}while(0) //TODO
-#define END_READ() do{}while(0) //TODO
-#define START_WRITE() do{}while(0) //TODO
-#define END_WRITE() do{}while(0) //TODO
+#define START_READ() rwlck[hash]->startRead()
+#define END_READ() rwlck[hash]->doneRead()
+#define START_WRITE() rwlck[hash]->startWrite()
+#define END_WRITE() rwlck[hash]->doneWrite()
 #else //else behave like NOLOCK (no option passed)
 #define START_READ() do{}while(0)
 #define END_READ() do{}while(0)
@@ -96,12 +96,19 @@ HashMap::HashMap() {
   table = new LinkedHashEntry*[TABLE_SIZE];
   for (int i = 0; i < TABLE_SIZE; i++)
     table[i] = NULL;
+
 #ifdef P1_SEMAPHORE
-  //insert setup code here
+  for (int i = 0; i < TABLE_SIZE; i++) {
+    sem[i] = new Semaphore((char *)"hash sem", 1);
+  }
 #elif defined P1_LOCK
-  //insert setup code here
+  for (int i = 0; i < TABLE_SIZE; i++) {
+    lck[i] = new Lock((char *)"hash lock");
+  }
 #elif defined P1_RWLOCK
-  //insert setup code here
+  for (int i = 0; i < TABLE_SIZE; i++) {
+    rwlck[i] = new RWLock();
+  }
 #endif
 }
 

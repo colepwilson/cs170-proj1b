@@ -7,6 +7,13 @@ class RWLock{
 private:
       //Add  fields for  RWLock. Your solution to Task 3
       //TODO
+		Lock *lock;
+		Condition *readers_ok;
+		Condition *writers_ok;
+
+		int active_readers;
+		int waiting_writers;
+		bool active_writer;
 public:
     	RWLock();
     	~RWLock();
