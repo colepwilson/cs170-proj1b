@@ -1,0 +1,113 @@
+Group Members: Cole Wilson
+
+In hashchain.cc:
+    - For Task 1, implemented the P1_SEMAPHORE macros:
+        START_READ()  -> calls sem[hash]->P()
+        END_READ()    -> calls sem[hash]->V()
+        START_WRITE() -> calls sem[hash]->P()
+        END_WRITE()   -> calls sem[hash]->V()
+
+    - Added semaphore setup in the HashMap constructor:
+        For each hash table bucket, allocated one Semaphore initialized to 1.
+        This makes each semaphore act like a mutex for that specific hash bucket.
+
+    - Added cleanup in the HashMap destructor:
+        Deleted each semaphore allocated for the hash buckets.
+
+    - For Task 2, implemented the P1_LOCK macros:
+        START_READ()  -> calls lck[hash]->Acquire()
+        END_READ()    -> calls lck[hash]->Release()
+        START_WRITE() -> calls lck[hash]->Acquire()
+        END_WRITE()   -> calls lck[hash]->Release()
+
+    - Added lock setup in the HashMap constructor:
+        For each hash table bucket, allocated one Lock object.
+
+    - Added cleanup in the HashMap destructor:
+        Deleted each Lock object allocated for the hash buckets.
+
+    - For Task 3, implemented the P1_RWLOCK macros:
+        START_READ()  -> calls rwlck[hash]->startRead()
+        END_READ()    -> calls rwlck[hash]->doneRead()
+        START_WRITE() -> calls rwlck[hash]->startWrite()
+        END_WRITE()   -> calls rwlck[hash]->doneWrite()
+
+    - Added RWLock setup in the HashMap constructor:
+        For each hash table bucket, allocated one RWLock object.
+
+    - Added cleanup in the HashMap destructor:
+        Deleted each RWLock object allocated for the hash buckets.
+
+In synch.cc:
+    - For Task 2, implemented Lock methods:
+        Lock constructor: initializes name, value, queue, and owner.
+        Lock destructor: deletes the waiting queue.
+        Acquire: disables interrupts, waits while the lock is unavailable, puts the current thread to sleep if needed, then marks the lock as held by the current thread.
+        Release: disables interrupts, checks that the current thread owns the lock, releases ownership, wakes one waiting thread if any exist, and restores interrupts.
+        isHeldByCurrentThread: returns whether the current thread is the owner of the lock.
+
+    - For Task 3, implemented Condition methods:
+        Condition constructor: initializes name and waiting queue.
+        Condition destructor: deletes the waiting queue.
+        Wait: checks that the current thread holds the given lock, adds the current thread to the condition queue, releases the lock, puts the thread to sleep, and reacquires the lock after waking up.
+        Signal: checks that the current thread holds the given lock, removes one thread from the condition queue, and puts it on the ready queue.
+        Broadcast: checks that the current thread holds the given lock, removes all waiting threads from the condition queue, and puts each one on the ready queue.
+
+In rwlock.h:
+    - Added member variables to the RWLock class:
+        Lock *lock -> protects the RWLock internal state
+        Condition *readers_ok -> condition variable for waiting readers
+        Condition *writers_ok -> condition variable for waiting writers
+        int active_readers -> tracks how many readers are currently reading
+        int waiting_writers -> tracks how many writers are waiting
+        bool active_writer -> tracks whether a writer is currently writing
+
+In rwlock.cc:
+    - Constructor:
+        Allocates the internal Lock and Condition variables.
+        Initializes active_readers and waiting_writers to 0.
+        Initializes active_writer to false.
+
+    - Destructor:
+        Deletes the internal Lock and Condition variables.
+
+    - startRead:
+        Acquires the internal lock.
+        Waits while there is an active writer or while writers are waiting.
+        Increments active_readers once it is safe to read.
+        Releases the internal lock.
+
+    - doneRead:
+        Acquires the internal lock.
+        Decrements active_readers.
+        If this was the last active reader and writers are waiting, signals writers_ok.
+        Releases the internal lock.
+
+    - startWrite:
+        Acquires the internal lock.
+        Increments waiting_writers.
+        Waits while there is an active writer or any active readers.
+        Decrements waiting_writers once this writer is allowed to proceed.
+        Sets active_writer to true.
+        Releases the internal lock.
+
+    - doneWrite:
+        Acquires the internal lock.
+        Sets active_writer to false.
+        If writers are waiting, signals one writer.
+        Otherwise, broadcasts to all waiting readers.
+        Releases the internal lock.
+
+Design Explanation:
+    Task 1 uses Nachos Semaphores directly as mutexes. Each hash table bucket has its own semaphore initialized to 1. This allows operations on different buckets to run concurrently while still preventing race conditions within the same bucket.
+
+    Task 2 implements a Lock abstraction using interrupt disabling, a waiting queue, and an owner field. The lock behaves like a binary semaphore with ownership tracking. The hash table then uses one Lock per bucket, so get, put, remove, and increment are protected by the lock corresponding to the key's hash bucket.
+
+    Task 3 implements Condition variables and then uses them to build a reader-writer lock. The RWLock allows multiple readers to access the same bucket at the same time, but writers require exclusive access. The implementation gives priority to waiting writers by blocking new readers when waiting_writers is greater than zero. This prevents writers from starving if readers continue to arrive.
+
+    Overall, the synchronization is fine-grained because each bucket has its own synchronization object. This prevents concurrent access bugs on the same bucket but still allows operations on different buckets to proceed independently.
+
+Status:
+    The semaphore, lock, condition variable, and RWLock implementations are completed.
+    The hash table synchronization code is completed for P1_SEMAPHORE, P1_LOCK, and P1_RWLOCK.
+    The intended behavior is that Task 1 tests run with semaphores, Task 2 tests run with Locks, and Task 3 tests run with RWLocks.
